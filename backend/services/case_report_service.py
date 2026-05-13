@@ -9,7 +9,7 @@ from typing import Any
 
 from prisma import Prisma
 
-from models import DecisionStatus, DocumentStatus, Recommendation
+from models import DecisionStatus, DocumentStatus
 from schemas.case_read_model import CaseAnalysisSnapshot, CaseReadModel
 from schemas.case_report import (
     CaseReportHeader,

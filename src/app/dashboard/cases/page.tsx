@@ -398,13 +398,6 @@ export default function CasesPage() {
                   Start Case
                 </Link>
               </Button>
-              <Button
-                variant="ghost"
-                asChild
-                className="h-9 cursor-pointer rounded-lg px-4 text-[13px] text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
-              >
-                <Link href="/dashboard/cases/demo">View Demo</Link>
-              </Button>
             </div>
           </div>
         </Surface>

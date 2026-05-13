@@ -102,7 +102,7 @@ function newestLogErrors() {
   return results;
 }
 
-console.log("LoanLens dev doctor");
+console.log("ArgentNorth dev doctor");
 
 section("Port Owners");
 const owners = getPortOwners([frontendPort, backendPort], repoRoot);

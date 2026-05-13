@@ -5,6 +5,7 @@ Deterministic aggregates and intermediate bank statement metrics.
 from __future__ import annotations
 
 import statistics
+from datetime import date
 from typing import Any, Dict, List
 
 from services.bank_statement_engine_common import is_excluded_from_income_analysis, parse_statement_date

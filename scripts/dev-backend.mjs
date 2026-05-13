@@ -22,7 +22,7 @@ const logDir = path.join(repoRoot, "run-logs");
 const timestamp = timestampForLog();
 const python = selectPython(repoRoot, backendRoot);
 
-console.log(`LoanLens backend dev server`);
+console.log(`ArgentNorth backend dev server`);
 console.log(`- Python: ${python.command} ${python.args.join(" ")}`.trim());
 console.log(`- URL: http://${host}:${port}`);
 console.log(`- Reload: ${reload ? "enabled" : "disabled"}`);

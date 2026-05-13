@@ -74,7 +74,7 @@ export default function BenefitsSection() {
                         <span className="text-gradient">review friction</span>
                     </h2>
                     <p className="mt-4 text-lg text-muted-foreground leading-relaxed">
-                        LoanLens AI helps prepare the evidence analysts need, while
+                        ArgentNorth AI helps prepare the evidence analysts need, while
                         leaving credit policy, exceptions, and final approval in your
                         team&apos;s hands.
                     </p>

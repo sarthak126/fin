@@ -1,5 +1,5 @@
 /**
- * LoanLens AI — API client for communicating with the FastAPI backend.
+ * ArgentNorth AI — API client for communicating with the FastAPI backend.
  */
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || "/api/v1").replace(/\/+$/, "");
 

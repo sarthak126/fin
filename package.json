@@ -1,5 +1,5 @@
 {
-  "name": "ai",
+  "name": "argentnorth",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -11,6 +11,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "typecheck": "tsc --noEmit",
     "test": "node scripts/run-verification.mjs",
     "test:auth-bootstrap": "node scripts/test-auth-bootstrap.mjs",
     "test:devtools": "node --test scripts/dev-stack-utils.test.mjs",

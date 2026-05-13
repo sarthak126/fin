@@ -47,6 +47,7 @@ next-env.d.ts
 
 # backend runtime
 /backend/venv/
+/backend/.venv/
 __pycache__/
 *.py[cod]
 /backend/uploads/

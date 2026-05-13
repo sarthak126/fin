@@ -16,7 +16,7 @@ async def test_health_check_reports_service_status(async_client, monkeypatch):
     assert response.status_code == 200
     assert response.json() == {
         "status": "ok",
-        "service": "LoanLens AI API",
+        "service": "ArgentNorth API",
         "version": "0.1.0",
         "environment": "development",
         "startup_policy": "development-degraded-ok",
@@ -37,7 +37,7 @@ async def test_health_check_reports_degraded_development_mode(async_client, monk
     assert response.status_code == 200
     assert response.json() == {
         "status": "degraded",
-        "service": "LoanLens AI API",
+        "service": "ArgentNorth API",
         "version": "0.1.0",
         "environment": "development",
         "startup_policy": "development-degraded-ok",
@@ -104,7 +104,7 @@ async def test_ready_check_reports_connected_database(async_client, monkeypatch)
     assert response.status_code == 200
     assert response.json() == {
         "status": "ready",
-        "service": "LoanLens AI API",
+        "service": "ArgentNorth API",
         "version": "0.1.0",
         "environment": "development",
         "startup_policy": "development-degraded-ok",
@@ -123,7 +123,7 @@ async def test_live_check_reports_process_health(async_client):
     assert response.status_code == 200
     assert response.json() == {
         "status": "alive",
-        "service": "LoanLens AI API",
+        "service": "ArgentNorth API",
         "version": "0.1.0",
         "environment": "staging",
         "startup_policy": "strict-db-required",

@@ -1,6 +1,6 @@
 "use client";
 
-import type { ElementType } from "react";
+import type { ComponentType } from "react";
 import Link from "next/link";
 import {
   Activity,
@@ -146,7 +146,7 @@ function IntelligenceHeader({
   title,
   iconClassName,
 }: {
-  icon: ElementType;
+  icon: ComponentType<{ className?: string }>;
   eyebrow: string;
   title: string;
   iconClassName: string;
@@ -636,7 +636,7 @@ export default function DashboardPage() {
             {prototypeCases.map((item) => (
               <Link
                 key={item.id}
-                href="/dashboard/cases/demo"
+                href="/dashboard/cases"
                 className="grid gap-4 px-6 py-5 transition hover:bg-[var(--surface-hover)] lg:grid-cols-[1.2fr_0.8fr_0.75fr_0.6fr_auto]"
               >
                 <div className="min-w-0">

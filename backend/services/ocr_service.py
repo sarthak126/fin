@@ -1,5 +1,5 @@
 """
-OCR provider abstractions for LoanLens document extraction.
+OCR provider abstractions for ArgentNorth document extraction.
 """
 
 from __future__ import annotations

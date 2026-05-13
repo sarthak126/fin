@@ -1,0 +1,20 @@
+# Ruff configuration for the ArgentNorth backend.
+# Keep this in sync with `.github/workflows/ci.yml` so local and CI runs agree.
+
+line-length = 120
+target-version = "py311"
+
+exclude = [
+    ".venv",
+    "__pycache__",
+    ".ruff_cache",
+    "prisma",
+    "generated",
+]
+
+[lint.per-file-ignores]
+# Test conftest and one-off operator scripts legitimately manipulate sys.path
+# before importing project modules, which triggers E402 for the imports that
+# follow.
+"tests/conftest.py" = ["E402"]
+"scripts/*.py" = ["E402"]

@@ -1,5 +1,5 @@
 """
-LoanLens AI — FastAPI Backend Entry Point using Prisma ORM.
+ArgentNorth AI — FastAPI Backend Entry Point using Prisma ORM.
 """
 
 import asyncio
@@ -82,7 +82,7 @@ async def startup_app(app: FastAPI) -> None:
     db_status = "connected" if db.is_connected() and app.state.db_startup_error is None else "disconnected"
     startup_status = "ready" if db_status == "connected" else "degraded"
     print(
-        f"[startup] LoanLens AI API started with Prisma - "
+        f"[startup] ArgentNorth API started with Prisma - "
         f"status={startup_status} db={db_status} pid={os.getpid()} "
         f"reload={os.getenv('BACKEND_RELOAD_MODE', 'unknown')} "
         f"port={os.getenv('BACKEND_PORT', 'unknown')} "
@@ -120,7 +120,7 @@ if hasattr(sys.stderr, "reconfigure"):
         pass
 
 app = FastAPI(
-    title="LoanLens AI API",
+    title="ArgentNorth API",
     description="AI-powered loan document analysis API for fintech.",
     version="0.1.0",
     lifespan=lifespan,

@@ -129,13 +129,13 @@ def _validate_postgresql_runtime_config(settings: Settings) -> None:
     configured_provider = _normalize_provider(settings.DATABASE_PROVIDER)
     if configured_provider and configured_provider != "postgresql":
         raise PrismaClientGenerationError(
-            "LoanLens now requires PostgreSQL. Set DATABASE_PROVIDER=postgresql."
+            "ArgentNorth now requires PostgreSQL. Set DATABASE_PROVIDER=postgresql."
         )
 
     url_provider = _provider_from_database_url(settings.DATABASE_URL)
     if url_provider == "sqlite":
         raise PrismaClientGenerationError(
-            "LoanLens no longer supports SQLite DATABASE_URL values. "
+            "ArgentNorth no longer supports SQLite DATABASE_URL values. "
             "Set DATABASE_URL to a PostgreSQL connection string."
         )
 

@@ -62,7 +62,11 @@ const PHASE_DURATIONS = [800, 2000, 2600, 2200, 3400];
 function useAnimatedScore(target: number, active: boolean, duration = 1200) {
   const [value, setValue] = useState(0);
   useEffect(() => {
-    if (!active) { setValue(0); return; }
+    if (!active) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setValue(0);
+      return;
+    }
     let raf: number;
     const start = performance.now();
     const tick = (now: number) => {

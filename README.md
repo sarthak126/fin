@@ -1,4 +1,4 @@
-LoanLens local development is designed to run one Next.js listener on `3000`
+ArgentNorth local development is designed to run one Next.js listener on `3000`
 and one FastAPI listener on `8000`.
 
 ## Local Development

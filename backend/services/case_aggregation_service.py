@@ -997,9 +997,11 @@ def _build_document_ocr_status(
 ) -> CaseDocumentOcrStatus | None:
     artifact = artifact or {}
     metadata = dict(artifact.get("metadata", {}) or {})
-    artifact_list = lambda key: _coerce_int_list(
-        artifact.get(key) if artifact.get(key) is not None else metadata.get(key)
-    )
+
+    def artifact_list(key: str) -> list[int]:
+        return _coerce_int_list(
+            artifact.get(key) if artifact.get(key) is not None else metadata.get(key)
+        )
 
     ocr_required_pages = _coerce_int_list(
         job.get("ocr_required_pages") if job and job.get("ocr_required_pages") is not None else artifact_list("ocr_required_pages")

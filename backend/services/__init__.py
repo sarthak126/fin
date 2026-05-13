@@ -1,5 +1,5 @@
 """
-LoanLens AI — Service Layer
+ArgentNorth AI — Service Layer
 
 All pipeline services:
   - extraction_service  → PDF text extraction (PyMuPDF + Gemini Vision OCR)

@@ -6,7 +6,6 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 load_dotenv(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env"))
 
 import asyncio
-import json
 from services.analysis_service import (
     build_bank_statement_output,
     run_strict_bank_statement_pipeline,

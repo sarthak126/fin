@@ -1,4 +1,4 @@
-# LoanLens Data Flow - Current Implementation
+# ArgentNorth Data Flow - Current Implementation
 
 This note describes what the application stores today. It is intentionally written as an engineering source of truth, not marketing copy.
 
