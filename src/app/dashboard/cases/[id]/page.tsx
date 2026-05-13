@@ -990,13 +990,9 @@ function CaseDetailPageContent({ caseId }: { caseId: string }) {
   if (!readModel) {
     return (
       <div className="flex flex-col gap-6 pb-12">
-        <div className="flex items-center gap-3">
-          <Button asChild variant="ghost" size="icon" className="h-8 w-8 cursor-pointer">
-            <Link href="/dashboard/cases">
-              <ChevronLeft className="h-4 w-4" />
-            </Link>
-          </Button>
-          <h1 className="text-lg font-bold text-[var(--text-primary)]">Case Detail</h1>
+        <div>
+          <p className="text-[13px] font-medium text-primary">Case Dossier</p>
+          <h1 className="mt-1 text-[24px] font-semibold tracking-[-0.02em] text-[var(--text-primary)]">Case Detail</h1>
         </div>
         <div className="card-base flex flex-col items-center py-20">
           <XCircle className="mb-3 h-8 w-8 text-red-500" />
@@ -1026,13 +1022,9 @@ function CaseDetailPageContent({ caseId }: { caseId: string }) {
   if (!report) {
     return (
       <div className="flex flex-col gap-6 pb-12">
-        <div className="flex items-center gap-3">
-          <Button asChild variant="ghost" size="icon" className="h-8 w-8 cursor-pointer">
-            <Link href="/dashboard/cases">
-              <ChevronLeft className="h-4 w-4" />
-            </Link>
-          </Button>
-          <h1 className="text-lg font-bold text-[var(--text-primary)]">Case Detail</h1>
+        <div>
+          <p className="text-[13px] font-medium text-primary">Case Dossier</p>
+          <h1 className="mt-1 text-[24px] font-semibold tracking-[-0.02em] text-[var(--text-primary)]">{caseTitle}</h1>
         </div>
         <div className="card-base flex flex-col items-center py-20">
           <XCircle className="mb-3 h-8 w-8 text-red-500" />
@@ -1071,54 +1063,58 @@ function CaseDetailPageContent({ caseId }: { caseId: string }) {
 
   return (
     <div className="flex flex-col gap-6 pb-12" data-testid="case-detail-root">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-        <div className="flex items-start gap-3">
-          <Button asChild variant="ghost" size="icon" className="mt-0.5 h-8 w-8 cursor-pointer">
-            <Link href="/dashboard/cases">
-              <ChevronLeft className="h-4 w-4" />
-            </Link>
-          </Button>
+      <div className="flex items-center gap-1 text-[12px] text-[var(--text-muted)]">
+        <Button asChild variant="ghost" size="sm" className="h-7 cursor-pointer gap-1 px-2 text-[12px] text-[var(--text-muted)] hover:text-[var(--text-primary)]">
+          <Link href="/dashboard/cases">
+            <ChevronLeft className="h-3.5 w-3.5" />
+            Back to queue
+          </Link>
+        </Button>
+      </div>
 
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-[24px] font-bold tracking-tight text-[var(--text-primary)]">{caseTitle}</h1>
-              <StatusPill
-                label={formatStatusPillLabel(report.overview.decision_status)}
-                status={getDecisionTone(report.overview.decision_status)}
-              />
-              <Badge variant="secondary" className="border-transparent bg-[var(--surface-secondary)] text-[11px] text-[var(--text-muted)]">
-                {formatLabel(report.header.report_status)}
-              </Badge>
-              <Badge variant="secondary" className="border-transparent bg-[var(--surface-secondary)] text-[11px] text-[var(--text-muted)]">
-                {formatLabel(readModel.case.status)}
-              </Badge>
-            </div>
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div className="max-w-3xl">
+          <p className="text-[13px] font-medium text-primary">Case Dossier</p>
+          <div className="mt-1 flex flex-wrap items-center gap-2">
+            <h1 className="text-[24px] font-semibold tracking-[-0.02em] text-[var(--text-primary)] md:text-[30px]">
+              {caseTitle}
+            </h1>
+            <StatusPill
+              label={formatStatusPillLabel(report.overview.decision_status)}
+              status={getDecisionTone(report.overview.decision_status)}
+            />
+            <Badge variant="secondary" className="border-transparent bg-[var(--surface-secondary)] text-[11px] text-[var(--text-muted)]">
+              {formatLabel(report.header.report_status)}
+            </Badge>
+            <Badge variant="secondary" className="border-transparent bg-[var(--surface-secondary)] text-[11px] text-[var(--text-muted)]">
+              {formatLabel(readModel.case.status)}
+            </Badge>
+          </div>
 
-            <p className="mt-2 text-[13px] leading-relaxed text-[var(--text-muted)]">
-              {report.overview.summary}
-            </p>
+          <p className="mt-2 max-w-2xl text-[15px] leading-relaxed text-[var(--text-tertiary)]">
+            {report.overview.summary}
+          </p>
 
-            <div className="mt-3 flex flex-wrap items-center gap-3 text-[12px] text-[var(--text-muted)]">
-              <span>Case ID {readModel.case.id.slice(0, 8)}</span>
-              <span>Updated {formatDateTime(caseLastUpdated)}</span>
-              <span>Generated {formatDateTime(report.header.generated_at)}</span>
-              <span>Source {formatLabel(report.header.generated_from)}</span>
-            </div>
+          <div className="mt-3 flex flex-wrap items-center gap-3 text-[12px] text-[var(--text-muted)]">
+            <span>Case ID {readModel.case.id.slice(0, 8)}</span>
+            <span>Updated {formatDateTime(caseLastUpdated)}</span>
+            <span>Generated {formatDateTime(report.header.generated_at)}</span>
+            <span>Source {formatLabel(report.header.generated_from)}</span>
           </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <Button variant="outline" className="cursor-pointer" onClick={() => void reload()}>
+          <Button variant="outline" className="h-9 rounded-lg border-[var(--border-card)] bg-[var(--surface-raised)] text-[13px] cursor-pointer" onClick={() => void reload()}>
             Refresh
           </Button>
-          <Button asChild variant="outline" className="cursor-pointer gap-2">
+          <Button asChild variant="outline" className="h-9 rounded-lg border-[var(--border-card)] bg-[var(--surface-raised)] text-[13px] cursor-pointer gap-2">
             <Link href={`/reports/cases/${resolvedCaseId}`} target="_blank" rel="noopener noreferrer">
               <Download className="h-4 w-4" />
               Export PDF
             </Link>
           </Button>
           {!report.header.is_final ? (
-            <Button className="cursor-pointer gap-2" onClick={() => void finalize()} disabled={finalizing}>
+            <Button className="h-9 rounded-lg bg-primary px-4 text-[13px] font-semibold text-primary-foreground cursor-pointer gap-2" onClick={() => void finalize()} disabled={finalizing}>
               {finalizing ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
               {finalizing ? "Finalizing..." : "Finalize Report"}
             </Button>
