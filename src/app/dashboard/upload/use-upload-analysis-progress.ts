@@ -72,7 +72,7 @@ export const STAGES: UploadStage[] = [
 ];
 
 export const DOCUMENT_TYPE_OPTIONS: DocumentTypeOption[] = [
-  { value: "auto", label: "Auto-detect (recommended)", hint: "Let LoanLens infer type from content + filename" },
+  { value: "auto", label: "Auto-detect (recommended)", hint: "Let ArgentNorth infer type from content + filename" },
   { value: "bank_statement", label: "Bank statement", hint: "Balances, salary credits, NACH/EMIs, cash deposits" },
   { value: "salary_slip", label: "Salary slip / payslip", hint: "Net pay, deductions, employer, pay period" },
   { value: "tax_return", label: "ITR / tax return", hint: "Declared income, stability, self-employed signals" },

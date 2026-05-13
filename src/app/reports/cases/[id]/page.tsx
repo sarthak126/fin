@@ -316,7 +316,7 @@ export default function CaseReportPrintPage() {
               <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
                 <div className="max-w-3xl">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-                    LoanLens Final Report
+                    ArgentNorth Final Report
                   </p>
                   <h1 className="mt-3 text-[34px] font-semibold tracking-tight text-slate-950">
                     {report.header.title}

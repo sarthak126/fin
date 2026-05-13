@@ -60,7 +60,7 @@ export default function SolutionSection() {
                             <span className="text-gradient">structured review</span>
                         </h2>
                         <p className="mt-5 text-lg text-muted-foreground leading-relaxed">
-                            LoanLens AI assists manual document review with structured
+                            ArgentNorth AI assists manual document review with structured
                             extraction, bank-statement analysis, and case summaries your
                             analysts can verify.
                         </p>

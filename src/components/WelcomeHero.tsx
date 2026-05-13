@@ -9,13 +9,12 @@ import { isAuthEnabled } from "@/lib/auth";
 
 export function WelcomeHero() {
   const { user } = useUser();
-  const { hasViewedDemo, hasUploadedDocument, hasVerifiedSettings, startTour } = useOnboardingStore();
+  const { hasUploadedDocument, hasVerifiedSettings, startTour } = useOnboardingStore();
   const firstName = isAuthEnabled() ? user?.firstName : undefined;
 
-  const allDone = hasViewedDemo && hasUploadedDocument && hasVerifiedSettings;
+  const allDone = hasUploadedDocument && hasVerifiedSettings;
   if (allDone) return null;
   const steps = [
-    { label: "Review a demo case", done: hasViewedDemo, href: "/dashboard/cases/demo" },
     { label: "Start your first case", done: hasUploadedDocument, href: "/dashboard/upload" },
     { label: "Configure settings", done: hasVerifiedSettings, href: "/dashboard/settings" },
   ];

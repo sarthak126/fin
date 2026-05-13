@@ -77,7 +77,7 @@ export default function CustomersSection() {
                     </h2>
                     <p className="mt-4 text-lg text-muted-foreground leading-relaxed">
                         Whether you&apos;re a digital-first fintech or an established NBFC,
-                        LoanLens AI adapts to your workflow and scales with your ambitions.
+                        ArgentNorth AI adapts to your workflow and scales with your ambitions.
                     </p>
                 </motion.div>
 

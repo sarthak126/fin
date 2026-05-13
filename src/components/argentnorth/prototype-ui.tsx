@@ -1,6 +1,6 @@
 "use client";
 
-import type { ElementType, HTMLAttributes, ReactNode } from "react";
+import type { ComponentType, HTMLAttributes, ReactNode } from "react";
 import { ArrowUpRight, CheckCircle2, Circle, Info, ShieldCheck } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -99,7 +99,7 @@ export function SectionHeading({
   description,
   action,
 }: {
-  icon?: ElementType;
+  icon?: ComponentType<{ className?: string }>;
   title: string;
   description?: string;
   action?: ReactNode;
@@ -155,7 +155,7 @@ export function MetricCard({
   value: string;
   delta?: string;
   tone?: RiskTone;
-  icon?: ElementType;
+  icon?: ComponentType<{ className?: string }>;
   sparkData?: number[];
 }) {
   const style = toneClass(tone);

@@ -23,7 +23,7 @@ from services.bank_statement_local_parser import (
 from core.config import get_settings
 from services.document_analysis_local_fallback import build_local_analysis_fallback
 from services.vector_service import retrieve_relevant_chunks
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Optional
 
 
 _TRANSIENT_GEMINI_ERROR_MARKERS = (
@@ -87,7 +87,7 @@ async def _generate_content_with_retry(
 # System Prompts
 # ────────────────────────────────────────
 
-ANALYSIS_SYSTEM_PROMPT = """You are LoanLens AI — an expert financial document analyst for the Indian lending market.
+ANALYSIS_SYSTEM_PROMPT = """You are ArgentNorth AI — an expert financial document analyst for the Indian lending market.
 
 You analyze loan-related documents (bank statements, salary slips, ITRs, employment letters, loan agreements) and produce structured risk assessments.
 
@@ -154,7 +154,7 @@ ANALYSIS RULES:
 Return ONLY the JSON object. No markdown code blocks, no explanation text."""
 
 
-ASK_AI_SYSTEM_PROMPT = """You are LoanLens AI — an expert financial document analyst.
+ASK_AI_SYSTEM_PROMPT = """You are ArgentNorth AI — an expert financial document analyst.
 
 The user has uploaded a loan-related document and wants to ask questions about it.
 You have access to relevant sections of the document below.

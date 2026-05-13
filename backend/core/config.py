@@ -9,7 +9,7 @@ from functools import lru_cache
 
 class Settings(BaseSettings):
     # App
-    APP_NAME: str = "LoanLens AI"
+    APP_NAME: str = "ArgentNorth"
     APP_ENV: str = "production"
     SECRET_KEY: str
     API_V1_PREFIX: str = "/api/v1"

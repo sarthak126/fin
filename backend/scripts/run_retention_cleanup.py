@@ -21,7 +21,7 @@ from services.retention_service import enforce_retention_policy  # noqa: E402
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description=(
-            "Apply configured LoanLens retention windows for cases, documents, "
+            "Apply configured ArgentNorth retention windows for cases, documents, "
             "derived artifacts, vectors, job manifests, and audit logs."
         )
     )

@@ -21,7 +21,7 @@ from services.production_readiness_service import build_readiness_report  # noqa
 
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Run LoanLens production readiness checks and exit non-zero on failures."
+        description="Run ArgentNorth production readiness checks and exit non-zero on failures."
     )
     parser.add_argument(
         "--static-only",

@@ -42,7 +42,7 @@ _CASE_ASK_STOPWORDS = {
     "would",
 }
 
-CASE_ASK_SYSTEM_PROMPT = """You are LoanLens AI — an expert loan underwriting assistant.
+CASE_ASK_SYSTEM_PROMPT = """You are ArgentNorth AI — an expert loan underwriting assistant.
 
 The user is asking a question about a CASE REPORT that aggregates applicant
 intake, uploaded document analyses, cross-document checks, fraud signals, and

@@ -62,7 +62,7 @@ def _ensure_kms_alias(kms, alias_name: str) -> dict[str, str]:
         if error_code not in {"NotFoundException", "ValidationException"}:
             raise
 
-    metadata = kms.create_key(Description="LoanLens production rehearsal key")["KeyMetadata"]
+    metadata = kms.create_key(Description="ArgentNorth production rehearsal key")["KeyMetadata"]
     try:
         kms.create_alias(AliasName=alias_name, TargetKeyId=metadata["KeyId"])
     except ClientError as exc:

@@ -527,9 +527,6 @@ async def trigger_analysis(
             )
             raw_decision = final_json.get("decision")
             decision_verdict = raw_decision.get("decision_status") if isinstance(raw_decision, dict) else raw_decision
-            transaction_insights = final_json.get("transaction_insights") or {}
-            risk_findings = final_json.get("risk_findings") or {}
-            reasoning_payload = final_json.get("reasoning") or {}
             insights = SimpleNamespace()
             insights.risk_score = ((final_json.get("risk_findings") or {}).get("risk_score") or {}).get(
                 "final_score"

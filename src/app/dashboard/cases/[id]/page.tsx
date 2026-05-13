@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { ElementType } from "react";
+import type { ComponentType } from "react";
 
 import { useAuth } from "@clerk/nextjs";
 import Link from "next/link";
@@ -612,7 +612,7 @@ function SectionHeader({
   title,
   summary,
 }: {
-  icon: ElementType;
+  icon: ComponentType<{ className?: string }>;
   title: string;
   summary: string;
 }) {

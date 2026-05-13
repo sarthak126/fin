@@ -55,7 +55,7 @@ process.on("SIGINT", () => shutdown(0));
 process.on("SIGTERM", () => shutdown(0));
 process.on("exit", () => shutdown(process.exitCode ?? 0));
 
-console.log("Starting LoanLens local dev stack");
+console.log("Starting ArgentNorth local dev stack");
 console.log(`- Backend Python: ${python.command} ${python.args.join(" ")}`.trim());
 console.log(`- Stopping existing listeners on :${frontendPort} and :${backendPort}`);
 const stopped = stopPortOwners([frontendPort, backendPort], repoRoot);
@@ -133,7 +133,7 @@ try {
   });
 
   console.log("");
-  console.log("LoanLens dev stack is ready");
+  console.log("ArgentNorth dev stack is ready");
   console.log(`- Frontend: http://localhost:${frontendPort}`);
   console.log(`- Backend: http://${backendHost}:${backendPort}`);
   console.log(`- Backend readiness: http://${backendHost}:${backendPort}/health/ready`);

@@ -25,7 +25,7 @@ async def health_check(request: Request):
 
     return {
         "status": "ok" if db_connected else "degraded",
-        "service": "LoanLens AI API",
+        "service": "ArgentNorth API",
         "version": "0.1.0",
         "environment": app_env,
         "startup_policy": startup_policy,
@@ -40,7 +40,7 @@ async def live_check(request: Request):
     """Liveness probe for process-level health checks."""
     return {
         "status": "alive",
-        "service": "LoanLens AI API",
+        "service": "ArgentNorth API",
         "version": "0.1.0",
         "environment": getattr(request.app.state, "app_env", "unknown"),
         "startup_policy": getattr(request.app.state, "startup_policy", "strict-db-required"),
@@ -65,7 +65,7 @@ async def readiness_check(request: Request):
 
     return {
         "status": "ready",
-        "service": "LoanLens AI API",
+        "service": "ArgentNorth API",
         "version": "0.1.0",
         "environment": app_env,
         "startup_policy": startup_policy,
