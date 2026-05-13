@@ -1,0 +1,17 @@
+Bank of Baroda
+Statement of Account
+Account Name : MRS. SWATI NITIN BHOKARE
+A/C Number : 04740100006604
+Branch Name : KOPARGAON
+Branch Phone No. : 02423-223366
+IFSC Code : BARB0KOPERG
+MICR Code : 423012001
+Address : AT POST KOPARGAON
+AHMEDNAGAR MAHARASHTRA
+Statement Period : 22-01-2024 to 29-01-2024
+
+DATE     PARTICULARS                                 WITHDRAWALS      DEPOSITS        BALANCE
+---------------------------------------------------------------------------------------------
+22-01-2024 Opening Balance                                                            1,580.14
+25-01-2024 TRTR Credit                            0.00             7,381.00       12,961.14
+29-01-2024 UPI Transfer Out                   12,804.00             0.00           157.14

@@ -1,0 +1,42 @@
+{
+  "original_filename": "XXXXXXXXXX6604_20240129151130336063.pdf",
+  "statement_confidence": 0.91,
+  "decision_status": "insufficient_history",
+  "top_level_recommendation": "review",
+  "decision_recommendation": "Manual review / request 3\u20136 months statement history",
+  "decision_reason": "Insufficient history: coverage_days=8 (< 90 required); stable_income_status=income present but long-term stability is not fully verified; liquidity_signal=low (min_balance=Rs157.14; outflows=Rs12,804 > inflows=Rs11,381); next_action=Request 3\u20136 months of bank statement history.",
+  "required_followups": [
+    "Request 3\u20136 months of bank statement history"
+  ],
+  "analysis_limitations": [
+    "Statement coverage is only 8 day(s), below the 90-day minimum required for full underwriting.",
+    "Long-term income stability, recurring obligations, and balance behavior cannot be evidenced from the available statement history.",
+    "Income, DTI, and risk outputs are provisional because the available history is too short for a final underwriting decision."
+  ],
+  "statement_summary": {
+    "statement_start_date": "2024-01-22",
+    "statement_end_date": "2024-01-29",
+    "declared_period_start_date": null,
+    "declared_period_end_date": null,
+    "last_transaction_date": "2024-01-29",
+    "coverage_days": 8,
+    "opening_balance": 1580.14,
+    "closing_balance": 157.14,
+    "total_credits": 11381.0,
+    "total_debits": 12804.0,
+    "net_flow": -1423.0,
+    "min_balance": 157.14,
+    "max_balance": 12961.14,
+    "avg_balance": 5069.64,
+    "median_balance": 3580.14,
+    "transaction_count": 4,
+    "credit_count": 2,
+    "debit_count": 1,
+    "low_balance_count": 1,
+    "balance_volatility": 4971.06,
+    "recurring_income_detected": false,
+    "emi_pattern_detected": false,
+    "pass_through_transfer_detected": false,
+    "verification_credits_detected": false
+  }
+}

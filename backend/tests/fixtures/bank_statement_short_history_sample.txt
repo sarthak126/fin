@@ -1,0 +1,13 @@
+STATEMENT OF ACCOUNT
+Account Number: XXXXXXXXXX6604
+Customer Name: Sample Applicant
+Branch Name: Main Branch
+IFSC Code: BARB0KOPERG
+MICR Code: 423012001
+
+DATE     PARTICULARS                                 WITHDRAWALS      DEPOSITS        BALANCE
+---------------------------------------------------------------------------------------------
+22-01-2024 Opening Balance                                                            1,580.14
+22-01-2024 UPI Transfer In 1                       0.00             4,000.00        5,580.14
+25-01-2024 UPI Transfer In 2                       0.00             7,381.00       12,961.14
+29-01-2024 UPI Transfer Out                   12,804.00             0.00           157.14

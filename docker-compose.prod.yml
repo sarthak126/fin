@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - INTERNAL_API_URL=http://backend:8000/api/v1
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_ENABLE_AUTH=${NEXT_PUBLIC_ENABLE_AUTH:-true}
+      - NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY:-}
+      - CLERK_SECRET_KEY=${CLERK_SECRET_KEY:-}
+      - INTERNAL_API_URL=http://backend:8000/api/v1
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000').then((response)=>process.exit(response.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    restart: always
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - APP_ENV=production
+      - DATABASE_PROVIDER=postgresql
+      - PRISMA_SCHEMA_PATH=./schema.prisma
+      - API_V1_PREFIX=/api/v1
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY:-}
+      - DATABASE_URL=${DATABASE_URL:-}
+      - DIRECT_URL=${DIRECT_URL:-}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-}
+      - S3_BUCKET_NAME=${S3_BUCKET_NAME:-loanlens-documents}
+      - AWS_REGION=${AWS_REGION:-ap-south-1}
+      - AWS_S3_ENDPOINT_URL=${AWS_S3_ENDPOINT_URL:-}
+      - AWS_KMS_ENDPOINT_URL=${AWS_KMS_ENDPOINT_URL:-}
+      - AWS_KMS_KEY_ID=${AWS_KMS_KEY_ID:-}
+      - AWS_S3_FORCE_PATH_STYLE=${AWS_S3_FORCE_PATH_STYLE:-false}
+      - CLERK_SECRET_KEY=${CLERK_SECRET_KEY:-}
+      - SECRET_KEY=${SECRET_KEY:?SECRET_KEY must be set for production}
+      - FRONTEND_URL=http://localhost:3000
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0) if urllib.request.urlopen('http://127.0.0.1:8000/health/ready').status == 200 else sys.exit(1)"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    restart: always

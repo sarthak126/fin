@@ -1,0 +1,168 @@
+generator client {
+  provider             = "prisma-client-py"
+  interface            = "asyncio"
+  recursive_type_depth = 5
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Organization {
+  id         String     @id @default(uuid())
+  name       String
+  domain     String?
+  created_at DateTime   @default(now())
+  updated_at DateTime   @updatedAt
+  users      User[]
+  cases      Case[]
+  documents  Document[]
+
+  @@map("organizations")
+}
+
+model User {
+  id           String       @id @default(uuid())
+  email        String       @unique
+  name         String
+  role         String       @default("analyst") // "admin", "analyst", "viewer"
+  org_id       String
+  organization Organization @relation(fields: [org_id], references: [id])
+  is_active    Boolean      @default(true)
+  created_at   DateTime     @default(now())
+  updated_at   DateTime     @updatedAt
+  cases        Case[]
+  documents    Document[]
+  audit_logs   AuditLog[]
+
+  @@index([email])
+  @@map("users")
+}
+
+model Document {
+  id                 String       @id @default(uuid())
+  filename           String
+  original_filename  String
+  file_url           String?
+  file_type          String       @default("application/pdf")
+  file_size_bytes    Int          @default(0)
+  document_type      String       @default("other")
+  status             String       @default("pending") // "pending", "processing", "analyzed", "failed"
+  case_id            String?
+  case               Case?        @relation(fields: [case_id], references: [id])
+  legacy_source_case Case?        @relation("LegacyCaseSourceDocument")
+  user_id            String
+  user               User         @relation(fields: [user_id], references: [id])
+  org_id             String
+  organization       Organization @relation(fields: [org_id], references: [id])
+  created_at         DateTime     @default(now())
+  updated_at         DateTime     @updatedAt
+  analyses           Analysis[]
+
+  @@index([case_id])
+  @@index([user_id])
+  @@index([org_id])
+  @@index([status])
+  @@map("documents")
+}
+
+model Case {
+  id                        String         @id @default(uuid())
+  name                      String?
+  status                    String         @default("draft") // "draft", "collecting", "finalized"
+  applicant_name            String?
+  applicant_email           String?
+  applicant_phone           String?
+  legacy_source_document_id String?        @unique // Backfilled legacy cases keep the original seed document here.
+  legacy_source_document    Document?      @relation("LegacyCaseSourceDocument", fields: [legacy_source_document_id], references: [id])
+  user_id                   String
+  user                      User           @relation(fields: [user_id], references: [id])
+  org_id                    String
+  organization              Organization   @relation(fields: [org_id], references: [id])
+  documents                 Document[]
+  analyses                  CaseAnalysis[]
+  created_at                DateTime       @default(now())
+  updated_at                DateTime       @updatedAt
+
+  @@index([user_id])
+  @@index([org_id])
+  @@index([status])
+  @@map("cases")
+}
+
+model CaseAnalysis {
+  id                        String   @id @default(uuid())
+  case_id                   String
+  case                      Case     @relation(fields: [case_id], references: [id])
+  case_status               String   @default("draft") // Snapshot of case lifecycle: "draft", "collecting", "finalized"
+  is_final                  Boolean  @default(false)
+  risk_score                Float?
+  confidence                Float?
+  recommendation            String?
+  decision_status           String?
+  decision_recommendation   String?
+  decision_reason           String?
+  extraction_confidence     Float?
+  risk_confidence           Float?
+  data_completeness         Float?
+  required_followups_json   String?
+  analysis_limitations_json String?
+  extracted_fields          String?
+  risk_alerts               String?
+  summary                   String?
+  processing_time_seconds   Float?
+  model_used                String?
+  raw_response              String?
+  created_at                DateTime @default(now())
+
+  @@index([case_id])
+  @@index([case_id, is_final])
+  @@index([case_status])
+  @@map("case_analyses")
+}
+
+model Analysis {
+  id                        String   @id @default(uuid())
+  document_id               String
+  document                  Document @relation(fields: [document_id], references: [id])
+  risk_score                Float?
+  confidence                Float?
+  recommendation            String? // "approve", "review", "reject"
+  decision_status           String?
+  decision_recommendation   String?
+  decision_reason           String?
+  extraction_confidence     Float?
+  risk_confidence           Float?
+  data_completeness         Float?
+  required_followups_json   String? // Stored as JSON string
+  analysis_limitations_json String? // Stored as JSON string
+  extracted_fields          String? // Stored as JSON string
+  risk_alerts               String? // Stored as JSON string
+  summary                   String?
+  processing_time_seconds   Float?
+  model_used                String?
+  raw_response              String? // Stored as JSON string
+  created_at                DateTime @default(now())
+
+  @@index([document_id])
+  @@map("analyses")
+}
+
+model AuditLog {
+  id            String   @id @default(uuid())
+  user_id       String?
+  user          User?    @relation(fields: [user_id], references: [id])
+  action        String
+  resource_type String?
+  resource_id   String?
+  metadata_json String? // Stored as JSON string
+  ip_address    String?
+  created_at    DateTime @default(now())
+
+  @@index([user_id])
+  @@index([action])
+  @@index([created_at])
+  @@map("audit_logs")
+}
