@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { PageHeader, Surface } from "@/components/argentnorth/prototype-ui";
+import { PageHeader, SectionHeading, StatusBadge, Surface } from "@/components/argentnorth/prototype-ui";
+import { CheckCircle2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -10,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   AlertTriangle,
   Bell,
+  BookOpenCheck,
   Building2,
   Check,
   CreditCard,
@@ -566,10 +568,12 @@ export default function SettingsPage() {
   return (
     <div className="flex flex-col gap-6 pb-10">
       <PageHeader
-        eyebrow="Settings"
-        title="Workspace policy, profile, and preferences."
-        description="Configure the controls that are live today and see which administrative surfaces are waiting for backend wiring."
-      />
+        eyebrow="Compliance & Settings"
+        title="Governance controls for regulated credit operations."
+        description="Workspace profile, organization, analysis, and notification preferences save in this browser. Security, billing, and destructive actions stay read-only until their backend flows ship."
+      >
+        <StatusBadge label="Audit-ready" tone="good" />
+      </PageHeader>
 
       <SettingsBanner />
 
@@ -603,6 +607,30 @@ export default function SettingsPage() {
           </div>
         </div>
       )}
+
+      <Surface className="p-5">
+        <SectionHeading
+          icon={BookOpenCheck}
+          title="Governance Battery"
+          description="Platform-wide guardrails that apply regardless of the active tab."
+        />
+        <div className="mt-5 grid gap-3 md:grid-cols-2">
+          {[
+            "Human override required for reject decisions",
+            "Agentic recommendations cannot write actions",
+            "Audit export includes full reason-code chain",
+            "Policy changes require dual approval before going live",
+          ].map((item) => (
+            <div
+              key={item}
+              className="flex items-start gap-2 text-[13px] leading-relaxed text-[var(--text-secondary)]"
+            >
+              <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-500" />
+              <span>{item}</span>
+            </div>
+          ))}
+        </div>
+      </Surface>
     </div>
   );
 }
