@@ -1,9 +1,19 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@clerk/nextjs";
-import { AlertTriangle, ArrowUpRight, CheckCircle2, ClipboardList, Clock, FileText, Loader2, RefreshCw, Upload } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowUpRight,
+  ClipboardList,
+  FileText,
+  Filter,
+  Loader2,
+  RefreshCw,
+  Search,
+  Upload,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -13,6 +23,7 @@ import {
   StatusBadge,
   Surface,
 } from "@/components/argentnorth/prototype-ui";
+import { cn } from "@/lib/utils";
 import {
   ApiError,
   getCaseReadModel,
@@ -29,6 +40,8 @@ interface CaseRow {
   readModel: CaseReadModel | null;
 }
 
+type QueueFilter = "All" | "Review" | "Attention";
+
 const DECISION_BADGE_STYLES: Record<DecisionStatus, string> = {
   approve: "text-emerald-500 bg-emerald-500/10 border-transparent",
   manual_review: "text-amber-500 bg-amber-500/10 border-transparent",
@@ -41,6 +54,12 @@ function getDecisionTone(status: DecisionStatus | null | undefined): RiskTone {
   if (status === "reject") return "danger";
   if (status === "manual_review" || status === "insufficient_history") return "warning";
   return "neutral";
+}
+
+function getRiskBandTone(band: "Low" | "Medium" | "High"): RiskTone {
+  if (band === "Low") return "good";
+  if (band === "High") return "danger";
+  return "warning";
 }
 
 function formatDate(dateStr?: string | null) {
@@ -103,6 +122,44 @@ function getLatestTimestamp(values: Array<string | null | undefined>) {
 
 function getLatestDecisionStatus(readModel: CaseReadModel | null): DecisionStatus | null {
   return readModel?.authoritative_analysis?.decision_status ?? readModel?.provisional_insights.decision_status ?? null;
+}
+
+function getLatestRiskScore(readModel: CaseReadModel | null): number | null {
+  return (
+    readModel?.authoritative_analysis?.risk_score ??
+    readModel?.provisional_insights.highest_risk_score ??
+    null
+  );
+}
+
+function getRiskBand(score: number | null): "Low" | "Medium" | "High" | null {
+  if (score === null || Number.isNaN(score)) return null;
+  if (score < 40) return "Low";
+  if (score < 70) return "Medium";
+  return "High";
+}
+
+function getRiskCell(readModel: CaseReadModel | null): {
+  label: string;
+  tone: RiskTone;
+  score: number | null;
+} {
+  const score = getLatestRiskScore(readModel);
+  const band = getRiskBand(score);
+
+  if (band === null || score === null) {
+    return {
+      label: "Pending",
+      tone: "neutral",
+      score: null,
+    };
+  }
+
+  return {
+    label: `${band} ${score.toFixed(0)}`,
+    tone: getRiskBandTone(band),
+    score,
+  };
 }
 
 function getDecisionBadge(readModel: CaseReadModel | null) {
@@ -199,56 +256,26 @@ function getDocumentSummary(readModel: CaseReadModel | null) {
   };
 }
 
-function getCompletenessSummary(readModel: CaseReadModel | null) {
-  if (!readModel) {
-    return {
-      label: "Unavailable",
-      detail: "Could not load completeness",
-      percent: 0,
-      fillClassName: "bg-[var(--surface-secondary)]",
-    };
-  }
-
+function getCompletenessPercent(readModel: CaseReadModel | null): number {
+  if (!readModel) return 0;
   const completeness = readModel.supported_document_completeness;
-  const providedCount = completeness.provided_requirement_count;
-  const analyzedCount = completeness.analyzed_requirement_count;
-  const totalCount = completeness.total_requirement_count;
-  const missingCount = completeness.missing_requirement_keys.length;
-  const pendingCount = completeness.pending_requirement_keys.length;
+  if (completeness.total_requirement_count === 0) return 0;
+  return Math.round(
+    (completeness.provided_requirement_count / completeness.total_requirement_count) * 100
+  );
+}
 
-  if (totalCount === 0) {
-    return {
-      label: "No supported docs",
-      detail: "Requirements have not been configured",
-      percent: 0,
-      fillClassName: "bg-[var(--surface-secondary)]",
-    };
+function getCompletenessDetail(readModel: CaseReadModel | null) {
+  if (!readModel) return "Unavailable";
+  const completeness = readModel.supported_document_completeness;
+  if (completeness.total_requirement_count === 0) return "No requirements";
+  if (completeness.missing_requirement_keys.length > 0) {
+    return `${completeness.missing_requirement_keys.length} missing`;
   }
-
-  if (missingCount > 0) {
-    return {
-      label: `${providedCount}/${totalCount} complete`,
-      detail: `${missingCount} missing`,
-      percent: Math.round((providedCount / totalCount) * 100),
-      fillClassName: "bg-amber-500",
-    };
+  if (completeness.pending_requirement_keys.length > 0) {
+    return `${completeness.pending_requirement_keys.length} pending`;
   }
-
-  if (pendingCount > 0 || analyzedCount < providedCount) {
-    return {
-      label: `${providedCount}/${totalCount} complete`,
-      detail: `${Math.max(providedCount - analyzedCount, pendingCount)} pending analysis`,
-      percent: Math.round((providedCount / totalCount) * 100),
-      fillClassName: "bg-blue-500",
-    };
-  }
-
-  return {
-    label: `${providedCount}/${totalCount} complete`,
-    detail: "All provided docs analyzed",
-    percent: Math.round((providedCount / totalCount) * 100),
-    fillClassName: "bg-emerald-500",
-  };
+  return "All docs analyzed";
 }
 
 function isRecoverableCaseHydrationError(error: unknown) {
@@ -266,11 +293,39 @@ function getCasesLoadErrorMessage(error: unknown) {
   return "Failed to load cases. Make sure the backend is running on port 8000.";
 }
 
+function matchesSearch(row: CaseRow, query: string) {
+  if (!query) return true;
+  const needle = query.trim().toLowerCase();
+  if (!needle) return true;
+  const applicant = getApplicantName(row.caseItem).toLowerCase();
+  const name = (row.caseItem.name ?? "").toLowerCase();
+  const id = row.caseItem.id.toLowerCase();
+  return applicant.includes(needle) || name.includes(needle) || id.includes(needle);
+}
+
+function matchesFilter(row: CaseRow, filter: QueueFilter) {
+  if (filter === "All") return true;
+  const decision = getLatestDecisionStatus(row.readModel);
+  if (filter === "Review") {
+    return decision === "manual_review";
+  }
+  if (filter === "Attention") {
+    return (
+      decision === "reject" ||
+      decision === "insufficient_history" ||
+      (row.readModel?.documents.some((document) => document.status === "failed") ?? false)
+    );
+  }
+  return true;
+}
+
 export default function CasesPage() {
   const { getToken } = useAuth();
   const [caseRows, setCaseRows] = useState<CaseRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [queueFilter, setQueueFilter] = useState<QueueFilter>("All");
+  const [searchQuery, setSearchQuery] = useState("");
 
   const loadCases = useCallback(async () => {
     try {
@@ -321,33 +376,51 @@ export default function CasesPage() {
     void loadCases();
   }, [loadCases]);
 
+  const visibleRows = useMemo(
+    () => caseRows.filter((row) => matchesFilter(row, queueFilter) && matchesSearch(row, searchQuery)),
+    [caseRows, queueFilter, searchQuery]
+  );
+
+  const reviewCount = useMemo(
+    () => caseRows.filter((row) => getLatestDecisionStatus(row.readModel) === "manual_review").length,
+    [caseRows]
+  );
+
+  const approveCount = useMemo(
+    () => caseRows.filter((row) => getLatestDecisionStatus(row.readModel) === "approve").length,
+    [caseRows]
+  );
+
+  const awaitingCount = useMemo(
+    () => caseRows.filter((row) => getLatestDecisionStatus(row.readModel) === null).length,
+    [caseRows]
+  );
+
   if (loading) {
     return (
-      <div className="flex flex-col gap-6 pb-10">
+      <div className="flex flex-col gap-10 pb-10">
         <PageHeader
           eyebrow="Case Queue"
-          title="Underwriting workbench."
-          description="Live applications, evidence completeness, decisions, and aging signals across the credit queue."
+          title="Decision book for active capital movement."
+          description="Every row exposes evidence sufficiency, latest risk score, and decision posture across the credit queue."
         />
-        <div id="cases-table-area">
-          <Surface className="overflow-hidden">
-            <div className="flex flex-col items-center justify-center py-24">
-              <Loader2 className="mb-3 h-6 w-6 animate-spin text-primary" />
-              <p className="text-[13px] font-medium text-[var(--text-secondary)]">Loading case queue...</p>
-            </div>
-          </Surface>
-        </div>
+        <Surface className="overflow-hidden">
+          <div className="flex flex-col items-center justify-center py-24">
+            <Loader2 className="mb-3 h-6 w-6 animate-spin text-primary" />
+            <p className="text-[13px] font-medium text-[var(--text-secondary)]">Loading case queue...</p>
+          </div>
+        </Surface>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="flex flex-col gap-6 pb-10">
+      <div className="flex flex-col gap-10 pb-10">
         <PageHeader
           eyebrow="Case Queue"
-          title="Underwriting workbench."
-          description="Live applications, evidence completeness, decisions, and aging signals across the credit queue."
+          title="Decision book for active capital movement."
+          description="Every row exposes evidence sufficiency, latest risk score, and decision posture across the credit queue."
         />
         <Surface className="overflow-hidden">
           <div className="flex flex-col items-center justify-center px-6 py-24">
@@ -373,13 +446,13 @@ export default function CasesPage() {
 
   if (caseRows.length === 0) {
     return (
-      <div className="flex flex-col gap-6 pb-10">
+      <div className="flex flex-col gap-10 pb-10">
         <PageHeader
           eyebrow="Case Queue"
-          title="Underwriting workbench."
-          description="Live applications, evidence completeness, decisions, and aging signals across the credit queue."
+          title="Decision book for active capital movement."
+          description="Every row exposes evidence sufficiency, latest risk score, and decision posture across the credit queue."
         />
-        <Surface className="overflow-hidden" id="cases-table-area">
+        <Surface className="overflow-hidden">
           <div className="flex flex-col items-center justify-center px-6 py-24">
             <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-lg bg-[var(--surface-secondary)]">
               <FileText className="h-5 w-5 text-[var(--text-muted)]" />
@@ -388,203 +461,203 @@ export default function CasesPage() {
             <p className="mb-6 max-w-[300px] text-center text-[13px] leading-relaxed text-[var(--text-tertiary)]">
               Upload documents to start a case and track applicant readiness here.
             </p>
-            <div className="flex items-center gap-2">
-              <Button
-                asChild
-                className="h-9 cursor-pointer gap-1.5 rounded-lg bg-primary px-4 text-[13px] font-medium text-primary-foreground hover:bg-primary/90"
-              >
-                <Link href="/dashboard/upload">
-                  <Upload className="h-3.5 w-3.5" />
-                  Start Case
-                </Link>
-              </Button>
-            </div>
+            <Button
+              asChild
+              className="h-9 cursor-pointer gap-1.5 rounded-lg bg-primary px-4 text-[13px] font-medium text-primary-foreground hover:bg-primary/90"
+            >
+              <Link href="/dashboard/upload">
+                <Upload className="h-3.5 w-3.5" />
+                Start Case
+              </Link>
+            </Button>
           </div>
         </Surface>
       </div>
     );
   }
 
-  const approvedCount = caseRows.filter(({ readModel }) => getLatestDecisionStatus(readModel) === "approve").length;
-  const reviewCount = caseRows.filter(({ readModel }) => getLatestDecisionStatus(readModel) === "manual_review").length;
-  const attentionCount = caseRows.filter(({ readModel }) => {
-    const decision = getLatestDecisionStatus(readModel);
-    return decision === "reject" || decision === "insufficient_history" || readModel?.documents.some((document) => document.status === "failed");
-  }).length;
-  const documentCount = caseRows.reduce((total, row) => total + (row.readModel?.documents.length ?? 0), 0);
-  const completenessAverage = Math.round(
-    caseRows.reduce((total, row) => total + getCompletenessSummary(row.readModel).percent, 0) / caseRows.length
-  );
-
   return (
-    <div className="flex flex-col gap-6 pb-10">
+    <div className="flex flex-col gap-10 pb-10">
       <PageHeader
         eyebrow="Case Queue"
-        title="Underwriting workbench."
-        description="Live applications, evidence completeness, decisions, and aging signals across the credit queue."
+        title="Decision book for active capital movement."
+        description="Every row exposes evidence sufficiency, latest risk score, and decision posture across the credit queue."
       >
         <Button
+          type="button"
+          variant="outline"
+          className="h-9 rounded-md border-[var(--border-card)] bg-[var(--surface-raised)] text-[13px]"
+        >
+          <Filter className="h-3.5 w-3.5" />
+          Filters
+        </Button>
+        <Button
           asChild
-          className="h-9 cursor-pointer gap-1.5 rounded-lg bg-primary px-4 text-[13px] font-semibold text-primary-foreground hover:bg-primary/90"
+          className="h-9 rounded-md bg-primary px-4 text-[13px] font-semibold text-primary-foreground"
         >
           <Link href="/dashboard/upload">
             <Upload className="h-3.5 w-3.5" />
-            New Case
+            New case
           </Link>
         </Button>
       </PageHeader>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <Surface className="p-5">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--text-tertiary)]">Active cases</p>
-              <p className="mt-3 font-mono text-[30px] font-semibold leading-none text-[var(--text-primary)] tabular-nums">
-                {caseRows.length}
-              </p>
-            </div>
-            <FileText className="h-4 w-4 text-primary" />
-          </div>
-          <p className="mt-4 text-[12px] text-[var(--text-tertiary)]">{documentCount} documents attached</p>
-        </Surface>
-
-        <Surface className="p-5">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--text-tertiary)]">Ready</p>
-              <p className="mt-3 font-mono text-[30px] font-semibold leading-none text-emerald-500 tabular-nums">
-                {approvedCount}
-              </p>
-            </div>
-            <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-          </div>
-          <p className="mt-4 text-[12px] text-[var(--text-tertiary)]">{reviewCount} require reviewer action</p>
-        </Surface>
-
-        <Surface className="p-5">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--text-tertiary)]">Attention</p>
-              <p className="mt-3 font-mono text-[30px] font-semibold leading-none text-amber-500 tabular-nums">
-                {attentionCount}
-              </p>
-            </div>
-            <AlertTriangle className="h-4 w-4 text-amber-500" />
-          </div>
-          <p className="mt-4 text-[12px] text-[var(--text-tertiary)]">Rejected, failed, or insufficient history</p>
-        </Surface>
-
-        <Surface className="p-5">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--text-tertiary)]">Completeness</p>
-              <p className="mt-3 font-mono text-[30px] font-semibold leading-none text-[var(--text-primary)] tabular-nums">
-                {completenessAverage}%
-              </p>
-            </div>
-            <Clock className="h-4 w-4 text-primary" />
-          </div>
-          <ProgressBar value={completenessAverage} tone={completenessAverage >= 80 ? "good" : "warning"} className="mt-4 h-1.5" />
-        </Surface>
+      <div className="grid gap-px overflow-hidden rounded-md border border-[var(--border-card)] md:grid-cols-4">
+        <div className="bg-[var(--surface-raised)] p-5">
+          <p className="text-[12px] text-[var(--text-muted)]">Active cases</p>
+          <p className="mt-2 font-mono text-[28px] font-semibold leading-none text-[var(--text-primary)] tabular-nums">
+            {caseRows.length}
+          </p>
+        </div>
+        <div className="bg-[var(--surface-raised)] p-5">
+          <p className="text-[12px] text-[var(--text-muted)]">Awaiting decision</p>
+          <p className="mt-2 font-mono text-[28px] font-semibold leading-none text-[var(--text-primary)] tabular-nums">
+            {awaitingCount}
+          </p>
+        </div>
+        <div className="bg-[var(--surface-raised)] p-5">
+          <p className="text-[12px] text-[var(--text-muted)]">Manual review</p>
+          <p className="mt-2 font-mono text-[28px] font-semibold leading-none text-amber-600 tabular-nums dark:text-amber-400">
+            {reviewCount}
+          </p>
+        </div>
+        <div className="bg-[var(--surface-raised)] p-5">
+          <p className="text-[12px] text-[var(--text-muted)]">Auto-approved</p>
+          <p className="mt-2 font-mono text-[28px] font-semibold leading-none text-emerald-600 tabular-nums dark:text-emerald-400">
+            {approveCount}
+          </p>
+        </div>
       </div>
 
       <Surface className="overflow-hidden" id="cases-table-area">
-        <div className="border-b border-[var(--border-card)] px-5 py-4">
-          <SectionHeading
-            icon={ClipboardList}
-            title="Active Queue"
-            description="Sorted by latest case, document, and analysis activity."
-          />
+        <div className="flex flex-col gap-3 border-b border-[var(--border-card)] px-5 py-4 lg:flex-row lg:items-center lg:justify-between">
+          <SectionHeading icon={ClipboardList} title="Credit Execution Book" />
+          <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
+            <label className="sr-only" htmlFor="case-queue-search">
+              Search cases
+            </label>
+            <div className="relative min-w-0 sm:w-[320px]">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--text-muted)]" />
+              <input
+                id="case-queue-search"
+                type="search"
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                placeholder="Search applicant, case, or ID"
+                className="h-9 w-full rounded-lg border border-[var(--border-card)] bg-[var(--surface-secondary)]/35 pl-9 pr-3 text-[13px] text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)] focus-visible:border-[var(--border-card-hover)]"
+              />
+            </div>
+            <div className="inline-flex w-fit rounded-lg border border-[var(--border-card)] bg-[var(--surface-secondary)]/35 p-1">
+              {(["All", "Review", "Attention"] as const).map((item) => (
+                <button
+                  key={item}
+                  type="button"
+                  onClick={() => setQueueFilter(item)}
+                  className={cn(
+                    "h-7 cursor-pointer rounded-md px-3 text-[12px] font-semibold transition-colors",
+                    queueFilter === item
+                      ? "bg-[var(--surface-raised)] text-[var(--text-primary)] shadow-sm"
+                      : "text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]"
+                  )}
+                >
+                  {item}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
 
-        <div className="hidden grid-cols-12 border-b border-[var(--border-card)] bg-[var(--surface-secondary)]/45 px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--text-muted)] sm:grid">
-          <div className="col-span-4">Applicant</div>
-          <div className="col-span-2">Documents</div>
-          <div className="col-span-2">Supported Docs</div>
-          <div className="col-span-2">Latest Decision</div>
-          <div className="col-span-2">Last Updated</div>
+        <div className="overflow-x-auto">
+          <div className="min-w-[920px]">
+            <div className="grid grid-cols-[1.4fr_0.8fr_0.85fr_0.7fr_0.85fr_0.9fr] border-b border-[var(--border-card)] bg-[var(--surface-secondary)]/35 px-5 py-2.5 text-[11px] font-medium uppercase tracking-[0.06em] text-[var(--text-muted)]">
+              <div>Applicant</div>
+              <div>Documents</div>
+              <div>Evidence</div>
+              <div>Risk</div>
+              <div>Decision</div>
+              <div>Updated</div>
+            </div>
+
+            {visibleRows.length === 0 ? (
+              <div className="flex flex-col items-center justify-center px-6 py-16">
+                <p className="text-[13px] font-medium text-[var(--text-secondary)]">No cases match this filter</p>
+                <p className="mt-1 text-[12px] text-[var(--text-tertiary)]">
+                  Try clearing the search or selecting a different segment.
+                </p>
+              </div>
+            ) : (
+              <div className="divide-y divide-[var(--border-subtle)]">
+                {visibleRows.map(({ caseItem, readModel }) => {
+                  const documentSummary = getDocumentSummary(readModel);
+                  const completenessPercent = getCompletenessPercent(readModel);
+                  const completenessDetail = getCompletenessDetail(readModel);
+                  const decisionBadge = getDecisionBadge(readModel);
+                  const riskCell = getRiskCell(readModel);
+                  const lastUpdated = getLastUpdated(caseItem, readModel);
+                  const detailHref = `/dashboard/cases/${caseItem.id}`;
+
+                  return (
+                    <Link
+                      key={caseItem.id}
+                      href={detailHref}
+                      className="grid w-full grid-cols-[1.4fr_0.8fr_0.85fr_0.7fr_0.85fr_0.9fr] items-center gap-0 px-5 py-4 text-left transition-colors hover:bg-[var(--surface-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45"
+                    >
+                      <div className="min-w-0 pr-4">
+                        <div className="flex min-w-0 items-center gap-3">
+                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                            <FileText className="h-4 w-4 text-primary" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="truncate text-[13px] font-semibold text-[var(--text-primary)]">
+                              {getApplicantName(caseItem)}
+                            </p>
+                            <p className="mt-1 truncate font-mono text-[11px] text-[var(--text-muted)]">
+                              {caseItem.id.slice(0, 8)} - {formatWorkflowStatus(caseItem.status)}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="min-w-0 pr-4">
+                        <p className="text-[13px] font-medium text-[var(--text-primary)] tabular-nums">
+                          {documentSummary.countLabel === "--" ? "--" : `${documentSummary.countLabel} doc${documentSummary.countLabel === "1" ? "" : "s"}`}
+                        </p>
+                        <p className="mt-1 truncate text-[11px] text-[var(--text-muted)]">{documentSummary.detail}</p>
+                      </div>
+
+                      <div className="pr-5">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="font-mono text-[12px] font-semibold text-[var(--text-primary)] tabular-nums">
+                            {completenessPercent}%
+                          </span>
+                        </div>
+                        <ProgressBar
+                          value={completenessPercent}
+                          tone={completenessPercent >= 80 ? "good" : "warning"}
+                          className="mt-2 h-1.5"
+                        />
+                        <p className="mt-1 truncate text-[11px] text-[var(--text-muted)]">{completenessDetail}</p>
+                      </div>
+
+                      <div>
+                        <StatusBadge label={riskCell.label} tone={riskCell.tone} />
+                      </div>
+
+                      <div>
+                        <StatusBadge label={decisionBadge.label} tone={decisionBadge.tone} />
+                      </div>
+
+                      <div className="flex items-center justify-between gap-3 pr-1">
+                        <p className="text-[12px] text-[var(--text-muted)] tabular-nums">{formatDate(lastUpdated)}</p>
+                        <ArrowUpRight className="h-3.5 w-3.5 text-[var(--text-faint)]" />
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </div>
-
-        {caseRows.map(({ caseItem, readModel }) => {
-          const documentSummary = getDocumentSummary(readModel);
-          const completenessSummary = getCompletenessSummary(readModel);
-          const decisionBadge = getDecisionBadge(readModel);
-          const lastUpdated = getLastUpdated(caseItem, readModel);
-          const detailHref = `/dashboard/cases/${caseItem.id}`;
-
-          const rowContent = (
-            <>
-              <div className="col-span-4 min-w-0">
-                <div className="flex min-w-0 items-center gap-3">
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-                    <FileText className="h-4 w-4 text-primary" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="truncate text-[13px] font-medium text-[var(--text-primary)]">
-                      {getApplicantName(caseItem)}
-                    </p>
-                    <div className="mt-1 flex flex-wrap items-center gap-2">
-                      <p className="truncate text-[11px] text-[var(--text-muted)]">
-                        {caseItem.name?.trim() || `Case ${caseItem.id.slice(0, 8)}`}
-                      </p>
-                      <StatusBadge label={formatWorkflowStatus(caseItem.status)} tone="neutral" />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="col-span-2">
-                <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)] sm:hidden">
-                  Documents
-                </p>
-                <p className="text-[13px] font-medium text-[var(--text-primary)]">
-                  {documentSummary.countLabel === "--"
-                    ? "Documents unavailable"
-                    : `${documentSummary.countLabel} document${documentSummary.countLabel === "1" ? "" : "s"}`}
-                </p>
-                <p className="text-[11px] text-[var(--text-muted)]">{documentSummary.detail}</p>
-              </div>
-
-              <div className="col-span-2">
-                <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)] sm:hidden">
-                  Supported Docs
-                </p>
-                <p className="text-[13px] font-medium text-[var(--text-primary)]">{completenessSummary.label}</p>
-                <ProgressBar
-                  value={completenessSummary.percent}
-                  tone={completenessSummary.percent >= 80 ? "good" : "warning"}
-                  className="mt-2 h-1.5"
-                />
-                <p className="mt-1 text-[11px] text-[var(--text-muted)]">{completenessSummary.detail}</p>
-              </div>
-
-              <div className="col-span-2">
-                <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)] sm:hidden">
-                  Latest Decision
-                </p>
-                <StatusBadge label={decisionBadge.label} tone={decisionBadge.tone} />
-              </div>
-
-              <div className="col-span-2 flex items-center justify-between gap-3">
-                <div>
-                  <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)] sm:hidden">
-                    Last Updated
-                  </p>
-                  <p className="text-[12px] text-[var(--text-muted)]">{formatDate(lastUpdated)}</p>
-                </div>
-                <ArrowUpRight className="h-3.5 w-3.5 text-[var(--text-faint)]" />
-              </div>
-            </>
-          );
-
-          const rowClassName = "grid grid-cols-1 items-start gap-4 border-b border-[var(--border-subtle)] px-5 py-4 transition-colors hover:bg-[var(--surface-hover)] cursor-pointer sm:grid-cols-12 sm:items-center sm:gap-0";
-
-          return (
-            <Link key={caseItem.id} href={detailHref} className={rowClassName}>
-              {rowContent}
-            </Link>
-          );
-        })}
       </Surface>
     </div>
   );
