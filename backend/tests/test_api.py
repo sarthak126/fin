@@ -514,6 +514,35 @@ async def test_list_cases_scopes_authenticated_org(async_client, fake_db, auth_c
     )
 
 
+async def test_get_case_summary_returns_counts_and_recent(async_client, fake_db, auth_context, monkeypatch):
+    recent_cases = [_make_case(id="case_recent_a"), _make_case(id="case_recent_b")]
+    summary_mock = AsyncMock(
+        return_value=(
+            9,
+            {"draft": 3, "collecting": 4, "finalized": 2},
+            recent_cases,
+        )
+    )
+    monkeypatch.setattr(case_routes, "get_case_summary", summary_mock)
+
+    response = await async_client.get("/api/v1/cases/summary?recent_limit=2")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["total_count"] == 9
+    assert {entry["status"]: entry["count"] for entry in body["by_status"]} == {
+        "draft": 3,
+        "collecting": 4,
+        "finalized": 2,
+    }
+    assert [c["id"] for c in body["recent_cases"]] == ["case_recent_a", "case_recent_b"]
+    summary_mock.assert_awaited_once_with(
+        db=fake_db,
+        org_id=auth_context.org_id,
+        recent_limit=2,
+    )
+
+
 async def test_get_case_returns_404_when_missing(async_client, fake_db, auth_context, monkeypatch):
     get_case_mock = AsyncMock(return_value=None)
     monkeypatch.setattr(case_routes, "get_case_by_id_for_org", get_case_mock)

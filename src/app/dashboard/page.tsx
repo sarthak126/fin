@@ -1,7 +1,9 @@
 "use client";
 
 import type { ComponentType } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useAuth } from "@clerk/nextjs";
 import {
   Activity,
   ArrowRight,
@@ -21,7 +23,6 @@ import {
 
 import { Button } from "@/components/ui/button";
 import {
-  DecisionBadge,
   HealthDot,
   InlineLinkLabel,
   PageHeader,
@@ -38,11 +39,17 @@ import {
   eventStream,
   northstarBrief,
   northstarRecommendations,
-  operatingMetrics,
   policyControls,
-  prototypeCases,
   type RiskTone,
 } from "@/lib/argentnorth-prototype";
+import {
+  ApiError,
+  getCaseSummary,
+  type CaseListItem,
+  type CaseStatus,
+  type CaseSummaryResponse,
+} from "@/lib/api";
+import { getApiToken } from "@/lib/auth";
 
 /* System intelligence - fleet-level view */
 
@@ -460,11 +467,18 @@ function NorthstarBriefPanel() {
   );
 }
 
-function OperatingMetricsStrip() {
+type OperatingMetric = {
+  label: string;
+  value: string;
+  detail: string;
+  tone: RiskTone;
+};
+
+function OperatingMetricsStrip({ metrics }: { metrics: OperatingMetric[] }) {
   return (
     <Surface className="overflow-hidden">
       <div className="grid divide-y divide-[var(--border-subtle)] md:grid-cols-4 md:divide-x md:divide-y-0">
-        {operatingMetrics.map((metric) => {
+        {metrics.map((metric) => {
           const style = toneClass(metric.tone);
 
           return (
@@ -485,6 +499,70 @@ function OperatingMetricsStrip() {
       </div>
     </Surface>
   );
+}
+
+const CASE_STATUS_LABEL: Record<CaseStatus, string> = {
+  draft: "Draft",
+  collecting: "Collecting",
+  finalized: "Finalized",
+};
+
+const CASE_STATUS_TONE: Record<CaseStatus, RiskTone> = {
+  draft: "neutral",
+  collecting: "warning",
+  finalized: "good",
+};
+
+const CASE_STATUS_WORKFLOW: Record<CaseStatus, string> = {
+  draft: "Awaiting evidence",
+  collecting: "Evidence in review",
+  finalized: "Decisioned",
+};
+
+function statusCountFrom(summary: CaseSummaryResponse | null, status: CaseStatus): number {
+  if (!summary) {
+    return 0;
+  }
+  return summary.by_status.find((entry) => entry.status === status)?.count ?? 0;
+}
+
+function buildOperatingMetrics(summary: CaseSummaryResponse | null): OperatingMetric[] {
+  const total = summary?.total_count ?? 0;
+  const draftCount = statusCountFrom(summary, "draft");
+  const collectingCount = statusCountFrom(summary, "collecting");
+  const finalizedCount = statusCountFrom(summary, "finalized");
+
+  return [
+    {
+      label: "Active cases",
+      value: String(total),
+      detail: total === 1 ? "in this organization" : "in this organization",
+      tone: "neutral",
+    },
+    {
+      label: "Collecting evidence",
+      value: String(collectingCount),
+      detail: collectingCount > 0 ? "awaiting documents" : "queue clear",
+      tone: collectingCount > 0 ? "warning" : "good",
+    },
+    {
+      label: "Finalized",
+      value: String(finalizedCount),
+      detail: "decisions on record",
+      tone: "good",
+    },
+    {
+      label: "New drafts",
+      value: String(draftCount),
+      detail: draftCount > 0 ? "pending evidence intake" : "none open",
+      tone: "neutral",
+    },
+  ];
+}
+
+function caseDisplayName(item: CaseListItem): string {
+  const candidate = (item.applicant_name ?? item.name ?? "").trim();
+  return candidate || "Unnamed case";
 }
 
 function ControlPlanePanel() {
@@ -567,10 +645,48 @@ function ControlPlanePanel() {
 
 /* Page */
 
+function useDashboardSummary() {
+  const { getToken } = useAuth();
+  const [summary, setSummary] = useState<CaseSummaryResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  const load = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError("");
+      const token = await getApiToken(getToken);
+      const next = await getCaseSummary(token, { recentLimit: 4 });
+      setSummary(next);
+    } catch (loadError) {
+      if (loadError instanceof ApiError && (loadError.status === 401 || loadError.status === 403)) {
+        setError("Your session expired. Refresh the page and sign in again.");
+      } else if (loadError instanceof Error) {
+        setError(loadError.message || "Failed to load Command Center data.");
+      } else {
+        setError("Failed to load Command Center data.");
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [getToken]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  return { summary, loading, error };
+}
+
 export default function DashboardPage() {
-  const approveCount = prototypeCases.filter((item) => item.decision === "approve").length;
-  const reviewCount = prototypeCases.filter((item) => item.decision === "manual_review").length;
-  const rejectCount = prototypeCases.filter((item) => item.decision === "reject").length;
+  const { summary, loading, error } = useDashboardSummary();
+
+  const operatingMetrics = useMemo(() => buildOperatingMetrics(summary), [summary]);
+
+  const recentCases = summary?.recent_cases ?? [];
+  const draftCount = statusCountFrom(summary, "draft");
+  const collectingCount = statusCountFrom(summary, "collecting");
+  const finalizedCount = statusCountFrom(summary, "finalized");
 
   return (
     <div className="flex flex-col gap-8 pb-14">
@@ -596,7 +712,7 @@ export default function DashboardPage() {
 
       <NorthstarBriefPanel />
 
-      <OperatingMetricsStrip />
+      <OperatingMetricsStrip metrics={operatingMetrics} />
 
       <SystemIntelligencePanel />
 
@@ -619,55 +735,71 @@ export default function DashboardPage() {
 
           <div className="grid grid-cols-3 border-b border-[var(--border-card)] bg-[var(--surface-secondary)]/45 px-6 py-4">
             <div>
-              <p className="text-[22px] font-semibold leading-none text-emerald-500 tabular-nums">{approveCount}</p>
-              <p className="mt-1.5 text-[12px] font-medium text-[var(--text-tertiary)]">approved</p>
+              <p className="text-[22px] font-semibold leading-none text-emerald-500 tabular-nums">{finalizedCount}</p>
+              <p className="mt-1.5 text-[12px] font-medium text-[var(--text-tertiary)]">finalized</p>
             </div>
             <div>
-              <p className="text-[22px] font-semibold leading-none text-amber-500 tabular-nums">{reviewCount}</p>
-              <p className="mt-1.5 text-[12px] font-medium text-[var(--text-tertiary)]">in review</p>
+              <p className="text-[22px] font-semibold leading-none text-amber-500 tabular-nums">{collectingCount}</p>
+              <p className="mt-1.5 text-[12px] font-medium text-[var(--text-tertiary)]">collecting</p>
             </div>
             <div>
-              <p className="text-[22px] font-semibold leading-none text-red-500 tabular-nums">{rejectCount}</p>
-              <p className="mt-1.5 text-[12px] font-medium text-[var(--text-tertiary)]">rejected</p>
+              <p className="text-[22px] font-semibold leading-none text-[var(--text-secondary)] tabular-nums">{draftCount}</p>
+              <p className="mt-1.5 text-[12px] font-medium text-[var(--text-tertiary)]">drafts</p>
             </div>
           </div>
 
           <div className="divide-y divide-[var(--border-subtle)]">
-            {prototypeCases.map((item) => (
-              <Link
-                key={item.id}
-                href="/dashboard/cases"
-                className="grid gap-4 px-6 py-5 transition hover:bg-[var(--surface-hover)] lg:grid-cols-[1.2fr_0.8fr_0.75fr_0.6fr_auto]"
-              >
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <p className="truncate text-[14px] font-semibold text-[var(--text-primary)]">{item.applicant}</p>
-                    <StatusBadge
-                      label={item.priority}
-                      tone={item.priority === "Critical" ? "danger" : item.priority === "Elevated" ? "warning" : "neutral"}
-                    />
-                  </div>
-                  <p className="mt-1.5 truncate text-[13px] text-[var(--text-tertiary)]">
-                    {item.product} - {item.amount} - {item.region}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-[12px] font-semibold uppercase tracking-[0.12em] text-[var(--text-tertiary)]">Workflow</p>
-                  <p className="mt-1.5 text-[13px] font-medium text-[var(--text-secondary)]">{item.workflow}</p>
-                </div>
-                <div>
-                  <p className="text-[12px] font-semibold uppercase tracking-[0.12em] text-[var(--text-tertiary)]">Decision</p>
-                  <div className="mt-1.5">
-                    <DecisionBadge decision={item.decision} />
-                  </div>
-                </div>
-                <div>
-                  <p className="text-[12px] font-semibold uppercase tracking-[0.12em] text-[var(--text-tertiary)]">Risk</p>
-                  <p className="mt-1.5 text-[14px] font-semibold text-[var(--text-primary)] tabular-nums">{item.riskScore}</p>
-                </div>
-                <ArrowRight className="hidden h-4 w-4 self-center text-[var(--text-faint)] lg:block" />
-              </Link>
-            ))}
+            {error ? (
+              <p className="px-6 py-6 text-[13px] text-red-500">{error}</p>
+            ) : loading ? (
+              <p className="px-6 py-6 text-[13px] text-[var(--text-tertiary)]">Loading cases…</p>
+            ) : recentCases.length === 0 ? (
+              <div className="flex flex-col items-start gap-3 px-6 py-8">
+                <p className="text-[13px] text-[var(--text-tertiary)]">No cases yet for this organization.</p>
+                <Button asChild className="h-9 rounded-lg bg-primary px-4 text-[13px] font-semibold text-primary-foreground">
+                  <Link href="/dashboard/upload">
+                    <UploadCloud className="h-3.5 w-3.5" />
+                    Start your first case
+                  </Link>
+                </Button>
+              </div>
+            ) : (
+              recentCases.map((item) => {
+                const statusLabel = CASE_STATUS_LABEL[item.status];
+                const statusTone = CASE_STATUS_TONE[item.status];
+                const workflowLabel = CASE_STATUS_WORKFLOW[item.status];
+                return (
+                  <Link
+                    key={item.id}
+                    href={`/dashboard/cases/${item.id}`}
+                    className="grid gap-4 px-6 py-5 transition hover:bg-[var(--surface-hover)] lg:grid-cols-[1.2fr_0.8fr_0.75fr_0.6fr_auto]"
+                  >
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="truncate text-[14px] font-semibold text-[var(--text-primary)]">{caseDisplayName(item)}</p>
+                        <StatusBadge label={statusLabel} tone={statusTone} />
+                      </div>
+                      <p className="mt-1.5 truncate text-[13px] text-[var(--text-tertiary)]">
+                        {item.applicant_email ?? `Case ${item.id.slice(0, 8)}`}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[12px] font-semibold uppercase tracking-[0.12em] text-[var(--text-tertiary)]">Workflow</p>
+                      <p className="mt-1.5 text-[13px] font-medium text-[var(--text-secondary)]">{workflowLabel}</p>
+                    </div>
+                    <div>
+                      <p className="text-[12px] font-semibold uppercase tracking-[0.12em] text-[var(--text-tertiary)]">Decision</p>
+                      <p className="mt-1.5 text-[13px] font-medium text-[var(--text-muted)]">—</p>
+                    </div>
+                    <div>
+                      <p className="text-[12px] font-semibold uppercase tracking-[0.12em] text-[var(--text-tertiary)]">Risk</p>
+                      <p className="mt-1.5 text-[14px] font-semibold text-[var(--text-muted)] tabular-nums">—</p>
+                    </div>
+                    <ArrowRight className="hidden h-4 w-4 self-center text-[var(--text-faint)] lg:block" />
+                  </Link>
+                );
+              })
+            )}
           </div>
         </Surface>
 

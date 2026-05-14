@@ -166,6 +166,30 @@ export async function listCases(token: string): Promise<CaseListItem[]> {
 }
 
 /**
+ * Aggregated case counts and N most-recent cases for the Command Center.
+ */
+export async function getCaseSummary(
+  token: string,
+  options: { recentLimit?: number } = {},
+): Promise<CaseSummaryResponse> {
+  const params = new URLSearchParams();
+  if (options.recentLimit !== undefined) {
+    params.set("recent_limit", String(options.recentLimit));
+  }
+  const query = params.toString();
+  const url = `${API_BASE}/cases/summary${query ? `?${query}` : ""}`;
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (!res.ok) {
+    await throwApiError(res, "Failed to load case summary");
+  }
+
+  return res.json();
+}
+
+/**
  * Get a single case by ID.
  */
 export async function getCase(id: string, token: string): Promise<CaseDetail> {
@@ -393,6 +417,17 @@ export interface CaseListItem {
 export interface CaseDetail extends CaseListItem {
   user_id: string;
   org_id: string;
+}
+
+export interface CaseStatusCount {
+  status: CaseStatus;
+  count: number;
+}
+
+export interface CaseSummaryResponse {
+  total_count: number;
+  by_status: CaseStatusCount[];
+  recent_cases: CaseListItem[];
 }
 
 export interface CreateCaseRequest {

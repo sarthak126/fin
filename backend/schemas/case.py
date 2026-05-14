@@ -71,3 +71,14 @@ class CaseDetail(CaseListItem):
     org_id: str
 
     model_config = {"from_attributes": True}
+
+
+class CaseStatusCount(BaseModel):
+    status: CaseStatus
+    count: int
+
+
+class CaseSummaryResponse(BaseModel):
+    total_count: int
+    by_status: list[CaseStatusCount]
+    recent_cases: list[CaseListItem]

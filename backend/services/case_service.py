@@ -78,6 +78,27 @@ async def list_cases(
     )
 
 
+async def get_case_summary(
+    db: Prisma,
+    org_id: str,
+    *,
+    recent_limit: int = 4,
+) -> tuple[int, dict[str, int], list[Case]]:
+    """Aggregate org-scoped case counts grouped by status plus the most recent cases."""
+    total = await db.case.count(where={"org_id": org_id})
+    by_status: dict[str, int] = {}
+    for status in CaseStatus:
+        by_status[status.value] = await db.case.count(
+            where={"org_id": org_id, "status": status.value}
+        )
+    recent = await db.case.find_many(
+        where={"org_id": org_id},
+        order={"created_at": "desc"},
+        take=recent_limit,
+    )
+    return total, by_status, recent
+
+
 async def get_case_by_id_for_org(
     db: Prisma,
     case_id: str,

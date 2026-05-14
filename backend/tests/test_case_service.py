@@ -69,6 +69,48 @@ async def test_list_cases_scopes_and_orders_by_created_at():
 
 
 @pytest.mark.asyncio
+async def test_get_case_summary_aggregates_counts_and_recent_cases():
+    recent_cases = [_make_case(id="case_recent_1"), _make_case(id="case_recent_2")]
+    count_results = {
+        # Total (no status filter)
+        frozenset({("org_id", "org_test_456")}): 12,
+        # Per-status filters
+        frozenset({("org_id", "org_test_456"), ("status", CaseStatus.DRAFT.value)}): 4,
+        frozenset({("org_id", "org_test_456"), ("status", CaseStatus.COLLECTING.value)}): 5,
+        frozenset({("org_id", "org_test_456"), ("status", CaseStatus.FINALIZED.value)}): 3,
+    }
+
+    async def fake_count(*, where):
+        return count_results[frozenset(where.items())]
+
+    fake_db = SimpleNamespace(
+        case=SimpleNamespace(
+            count=AsyncMock(side_effect=fake_count),
+            find_many=AsyncMock(return_value=recent_cases),
+        )
+    )
+
+    total, by_status, recent = await case_service.get_case_summary(
+        db=fake_db,
+        org_id="org_test_456",
+        recent_limit=2,
+    )
+
+    assert total == 12
+    assert by_status == {
+        CaseStatus.DRAFT.value: 4,
+        CaseStatus.COLLECTING.value: 5,
+        CaseStatus.FINALIZED.value: 3,
+    }
+    assert recent is recent_cases
+    fake_db.case.find_many.assert_awaited_once_with(
+        where={"org_id": "org_test_456"},
+        order={"created_at": "desc"},
+        take=2,
+    )
+
+
+@pytest.mark.asyncio
 async def test_get_case_by_id_for_org_uses_org_scope():
     case_record = _make_case()
     fake_db = SimpleNamespace(case=SimpleNamespace(find_first=AsyncMock(return_value=case_record)))

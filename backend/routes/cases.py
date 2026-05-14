@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
 from core.database import get_db
 from core.security import AuthenticatedContext, get_auth_context, require_mutation_role
+from models import CaseStatus
 from prisma import Prisma
 from schemas.ask import AskRequest, AskResponse
 from schemas.case import (
@@ -15,6 +16,8 @@ from schemas.case import (
     CaseCreateRequest,
     CaseDetail,
     CaseListItem,
+    CaseStatusCount,
+    CaseSummaryResponse,
 )
 from schemas.case_read_model import CaseAnalysisSnapshot, CaseReadModel
 from schemas.case_report import CaseReportPayload
@@ -39,6 +42,7 @@ from services.case_report_service import get_case_report
 from services.case_service import (
     create_case,
     get_case_by_id_for_org,
+    get_case_summary,
     list_cases,
     update_case_applicant_info,
 )
@@ -91,6 +95,28 @@ async def list_cases_route(
         org_id=auth_context.org_id,
         skip=skip,
         limit=limit,
+    )
+
+
+@router.get("/summary", response_model=CaseSummaryResponse)
+async def get_case_summary_route(
+    recent_limit: int = Query(4, ge=1, le=20),
+    db: Prisma = Depends(get_db),
+    auth_context: AuthenticatedContext = Depends(get_auth_context),
+):
+    """Aggregated case counts and recent cases for the Command Center."""
+    total, by_status_map, recent = await get_case_summary(
+        db=db,
+        org_id=auth_context.org_id,
+        recent_limit=recent_limit,
+    )
+    return CaseSummaryResponse(
+        total_count=total,
+        by_status=[
+            CaseStatusCount(status=CaseStatus(status_value), count=count)
+            for status_value, count in by_status_map.items()
+        ],
+        recent_cases=recent,
     )
 
 
