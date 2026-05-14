@@ -1,14 +1,17 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@clerk/nextjs";
 import {
   AlertCircle,
   ArrowRight,
+  CheckCircle2,
   ChevronDown,
+  ClipboardCheck,
   File,
+  FileCheck2,
   Loader2,
   Lock,
   Shield,
@@ -22,7 +25,9 @@ import {
   SectionHeading,
   StatusBadge,
   Surface,
+  toneClass,
 } from "@/components/argentnorth/prototype-ui";
+import type { RiskTone } from "@/lib/argentnorth-prototype";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -33,6 +38,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
 import { getApiToken } from "@/lib/auth";
 import { triggerAnalysis, uploadDocument } from "@/lib/api";
 import { useOnboardingStore } from "@/store/onboarding";
@@ -46,6 +52,19 @@ const IMAGE_HEADER_SEARCH_BYTES = 1024;
 const UNSUPPORTED_FILE_MESSAGE = "Unsupported file content. Upload a valid PDF, PNG, or JPEG file.";
 
 type UploadState = "idle" | "uploading" | "error";
+type StepStatus = "complete" | "active" | "pending";
+
+interface IntakeStep {
+  label: string;
+  detail: string;
+  status: StepStatus;
+}
+
+function statusTone(status: StepStatus): RiskTone {
+  if (status === "complete") return "good";
+  if (status === "active") return "warning";
+  return "neutral";
+}
 
 function inferMimeTypeFromFilename(filename: string): string {
   const lower = filename.toLowerCase();
@@ -129,6 +148,57 @@ export default function UploadPage() {
     DOCUMENT_TYPE_OPTIONS.find((option) => option.value === documentType)?.label ??
     "Auto-detect (recommended)";
   const hasCreatedCaseContext = Boolean(uploadedDocumentId && createdCaseId);
+
+  const intakeSteps = useMemo<IntakeStep[]>(() => {
+    const fileSelected = Boolean(localFile);
+    const applicantFilled = Boolean(applicantName.trim() || applicantEmail.trim() || applicantPhone.trim());
+    const docTypeChosen = documentType !== "auto";
+    const analyzed = hasCreatedCaseContext && uploadState !== "error";
+
+    let activeIndex = 0;
+    if (!fileSelected) activeIndex = 0;
+    else if (!applicantFilled) activeIndex = 1;
+    else if (!docTypeChosen) activeIndex = 2;
+    else activeIndex = 3;
+
+    const statuses: StepStatus[] = [
+      fileSelected ? "complete" : "active",
+      applicantFilled ? "complete" : fileSelected ? "active" : "pending",
+      docTypeChosen ? "complete" : applicantFilled ? "active" : "pending",
+      analyzed ? "complete" : activeIndex === 3 ? "active" : "pending",
+    ];
+
+    return [
+      {
+        label: "Select evidence",
+        detail: "Pick a PDF, PNG, or JPEG document up to 50MB.",
+        status: statuses[0],
+      },
+      {
+        label: "Applicant details",
+        detail: "Optional name, email, phone to label the case.",
+        status: statuses[1],
+      },
+      {
+        label: "Classify document",
+        detail: "Auto-detect or pick a specific document type.",
+        status: statuses[2],
+      },
+      {
+        label: "Create case and analyze",
+        detail: "Upload to org-scoped storage, then run analysis.",
+        status: statuses[3],
+      },
+    ];
+  }, [localFile, applicantName, applicantEmail, applicantPhone, documentType, hasCreatedCaseContext, uploadState]);
+
+  const overallStatusBadge = useMemo(() => {
+    if (uploadState === "uploading") return { label: "Analyzing…", tone: "warning" as RiskTone };
+    if (uploadState === "error") return { label: "Action needed", tone: "danger" as RiskTone };
+    if (hasCreatedCaseContext) return { label: "Case created", tone: "good" as RiskTone };
+    if (localFile) return { label: "Ready to analyze", tone: "good" as RiskTone };
+    return { label: "Awaiting file", tone: "neutral" as RiskTone };
+  }, [uploadState, hasCreatedCaseContext, localFile]);
 
   const validateAndSetFile = async (selectedFile: File) => {
     const detectedMimeType = await sniffFileMimeType(selectedFile);
@@ -215,10 +285,11 @@ export default function UploadPage() {
   return (
     <div className="flex flex-col gap-6 pb-10">
       <PageHeader
-        eyebrow="New Case"
-        title="Create a case and launch analysis."
+        eyebrow="Evidence Intake"
+        title="Guided case creation with live validation."
         description="Upload the first applicant document, classify it, and attach enough context for underwriting review."
       >
+        <StatusBadge label={overallStatusBadge.label} tone={overallStatusBadge.tone} />
         <Button
           asChild
           variant="outline"
@@ -228,14 +299,64 @@ export default function UploadPage() {
         </Button>
       </PageHeader>
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
+      <div className="grid items-start gap-6 xl:grid-cols-[280px_1fr_360px]">
+        <Surface className="overflow-hidden">
+          <div className="border-b border-[var(--border-card)] px-5 py-4">
+            <SectionHeading icon={ClipboardCheck} title="Workflow" />
+          </div>
+          <div className="divide-y divide-[var(--border-subtle)]">
+            {intakeSteps.map((step, index) => {
+              const style = toneClass(statusTone(step.status));
+
+              return (
+                <div
+                  key={step.label}
+                  className={cn(
+                    "flex w-full gap-3 px-5 py-4",
+                    step.status === "active" ? "bg-primary/[0.06]" : ""
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border font-mono text-[11px] font-semibold",
+                      style.bg,
+                      style.border,
+                      style.text
+                    )}
+                  >
+                    {step.status === "complete" ? (
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+                    ) : (
+                      index + 1
+                    )}
+                  </span>
+                  <span className="min-w-0">
+                    <span className="flex items-center gap-2">
+                      <span className="text-[13px] font-semibold text-[var(--text-primary)]">{step.label}</span>
+                      <span className={cn("h-1.5 w-1.5 rounded-full", style.dot)} />
+                    </span>
+                    <span className="mt-1 block text-[12px] leading-relaxed text-[var(--text-tertiary)]">
+                      {step.detail}
+                    </span>
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </Surface>
+
         <Surface className="overflow-hidden">
           <div className="border-b border-[var(--border-card)] px-6 py-5">
             <SectionHeading
               icon={UploadCloud}
-              title="Applicant Evidence"
+              title="Applicant and Evidence Details"
               description="PDF, PNG, and JPEG uploads are verified locally before the backend starts analysis."
-              action={<StatusBadge label={localFile ? "Ready" : "Awaiting file"} tone={localFile ? "good" : "neutral"} />}
+              action={
+                <StatusBadge
+                  label={localFile ? "File ready" : "Awaiting file"}
+                  tone={localFile ? "good" : "neutral"}
+                />
+              }
             />
           </div>
 
@@ -484,10 +605,12 @@ export default function UploadPage() {
           </div>
         </Surface>
 
-        <div className="flex flex-col gap-5">
-          <Surface className="p-5">
-            <SectionHeading icon={Shield} title="Controls" description="Pre-analysis checks for every upload." />
-            <div className="mt-4 space-y-3">
+        <div className="flex flex-col gap-6">
+          <Surface className="overflow-hidden">
+            <div className="border-b border-[var(--border-card)] px-5 py-4">
+              <SectionHeading icon={FileCheck2} title="Evidence Packet" />
+            </div>
+            <div className="px-5 py-4 space-y-3">
               <CheckItem>File type is verified from content, not only extension.</CheckItem>
               <CheckItem>Uploads stay under authenticated, org-scoped access.</CheckItem>
               <CheckItem>Document type guides extraction and risk checks.</CheckItem>
@@ -499,12 +622,18 @@ export default function UploadPage() {
             <SectionHeading icon={File} title="Accepted Evidence" />
             <div className="mt-4 grid grid-cols-3 gap-2">
               {["PDF", "PNG", "JPG"].map((item) => (
-                <div key={item} className="rounded-lg border border-[var(--border-card)] bg-[var(--surface-secondary)]/45 px-3 py-3 text-center">
+                <div
+                  key={item}
+                  className="rounded-lg border border-[var(--border-card)] bg-[var(--surface-secondary)]/45 px-3 py-3 text-center"
+                >
                   <p className="font-mono text-[15px] font-semibold text-[var(--text-primary)]">{item}</p>
                   <p className="mt-1 text-[10px] uppercase tracking-[0.12em] text-[var(--text-muted)]">file</p>
                 </div>
               ))}
             </div>
+            <p className="mt-4 text-[11px] leading-relaxed text-[var(--text-tertiary)]">
+              Max {MAX_UPLOAD_SIZE_MB}MB per file. PDFs may include a password if protected.
+            </p>
           </Surface>
         </div>
       </div>
