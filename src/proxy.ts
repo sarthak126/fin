@@ -11,7 +11,7 @@ const e2eAuthBypassEnabled =
 const localAuthDisabledBypassEnabled =
   process.env.NODE_ENV !== 'production' && !authFeatureEnabled
 
-const isProtectedRoute = createRouteMatcher(['/dashboard(.*)', '/reports(.*)'])
+const isProtectedRoute = createRouteMatcher(['/dashboard(.*)', '/reports(.*)', '/prototype(.*)'])
 
 const clerkProxy = clerkMiddleware(async (auth, req) => {
   if (isProtectedRoute(req)) {
